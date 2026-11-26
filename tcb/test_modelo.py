@@ -52,6 +52,12 @@ def test_parametros_en_rango():
         assert p["grado"] in (1, 2, 3) and p["c"] >= 1 and p["d"] >= 1
 
 
+def test_espacio_de_claves_amplio():
+    # Los coeficientes ya no se limitan a 1..9: con muchas claves hay muchos valores distintos.
+    cs = {parametros(str(i).encode())["c"] for i in range(200)}
+    assert len(cs) > 150 and max(cs) > 10**6
+
+
 def test_api():
     from app import app
     c = app.test_client()

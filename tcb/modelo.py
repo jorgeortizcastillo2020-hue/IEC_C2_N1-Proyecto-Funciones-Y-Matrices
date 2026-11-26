@@ -12,6 +12,7 @@ Cadena de transformación, por cada carácter c_i de la contraseña (i = 0, 1, 2
     s_i = w_i mod 97                            (se arrastra al siguiente carácter: difusión)
 
 Los parámetros (g, a, b, c, d, k, s_-1) salen de HMAC-SHA256(clave, "TCB-v1"): la "semilla".
+Los coeficientes son enteros de 32 bits, lo que da un espacio de claves de más de 100 bits.
 Se usa `decimal` (precisión fija) para que ln y exp den el mismo resultado en cualquier equipo.
 No se guarda nada: la función solo calcula y devuelve.
 """
@@ -40,15 +41,21 @@ class EntradaInvalida(ValueError):
 
 
 def parametros(clave: bytes) -> dict:
-    """Deriva los parámetros de las funciones a partir de la clave (la 'semilla')."""
+    """Deriva los parámetros de las funciones a partir de la clave (la 'semilla').
+
+    Cada coeficiente usa 4 bytes (32 bits) del HMAC, así el espacio de claves es enorme
+    (> 2^100) y no solo unos pocos valores posibles.
+    """
     h = hmac.new(clave, b"TCB-v1", hashlib.sha256).digest()
     grado = 1 + h[0] % 3
-    a, b, c, d = (1 + h[i] % 9 for i in range(1, 5))
+    # a, b, c, d: enteros de 32 bits (c y d >= 1 para que el polinomio sea siempre > 0)
+    a, b, c, d = (1 + int.from_bytes(h[4 * i + 1: 4 * i + 5], "big") for i in range(4))
     if grado < 3:
         a = 0
     if grado < 2:
         b = 0
-    return {"grado": grado, "a": a, "b": b, "c": c, "d": d, "k": h[5], "s0": h[6] % 97}
+    k = int.from_bytes(h[17:21], "big")
+    return {"grado": grado, "a": a, "b": b, "c": c, "d": d, "k": k, "s0": h[21] % 97}
 
 
 def f_pol(x: int, p: dict) -> int:
