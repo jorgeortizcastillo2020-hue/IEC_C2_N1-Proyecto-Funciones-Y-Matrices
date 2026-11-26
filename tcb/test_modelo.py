@@ -65,3 +65,11 @@ def test_api():
     assert ok.status_code == 200 and len(ok.get_json()["resultado"]) == LARGO_MIN_SALIDA
     assert c.post("/transformar", json={"password": ""}).status_code == 400
     assert c.post("/transformar", data="no json").status_code == 400
+
+
+def test_api_explicar():
+    from app import app
+    d = app.test_client().post("/explicar", json={"password": "contraseña123"}).get_json()
+    assert len(d["pasos"]) == 6 and d["total"] == LARGO_MIN_SALIDA
+    assert set(d["curvas"]) == {"pol", "ln", "exp"} and d["semilla"]["grado"] in (1, 2, 3)
+    assert all(float(x) > 0 for x, _ in d["curvas"]["ln"])  # dominio del logaritmo
